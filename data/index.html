@@ -1,53 +1,51 @@
 <!DOCTYPE html>
 <html lang="es" x-data="gestod()" x-init="iniciar()">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GESTOD — Control de Gestos</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <!-- Servidos desde LittleFS — sin internet requerido -->
+  <script src="/js/tailwind.min.js"></script>
+  <script defer src="/js/alpine.min.js"></script>
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            display: ['Syne', 'sans-serif'],
-            mono:    ['Space Mono', 'monospace'],
+            display: ['system-ui', 'sans-serif'],
+            mono: ['monospace'],
           },
           colors: {
-            base:    '#ffffff',
+            base: '#ffffff',
             surface: '#f5f5f5',
-            panel:   '#fafafa',
-            border:  '#e0e0e0',
-            accent:  '#0066ff',
-            warn:    '#ff4422',
-            muted:   '#888888',
-            dim:     '#cccccc',
-            ink:     '#111111',
+            panel: '#fafafa',
+            border: '#e0e0e0',
+            accent: '#0066ff',
+            warn: '#ff4422',
+            muted: '#888888',
+            dim: '#cccccc',
+            ink: '#111111',
           },
           animation: {
             'pulse-accent': 'pulseAccent 2s ease-in-out infinite',
-            'slide-up':     'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
-            'fade-in':      'fadeIn 0.6s ease both',
+            'slide-up': 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
+            'fade-in': 'fadeIn 0.6s ease both',
           },
           keyframes: {
             pulseAccent: {
               '0%,100%': { boxShadow: '0 0 0 0 rgba(0,102,255,0)' },
-              '50%':      { boxShadow: '0 0 0 8px rgba(0,102,255,0.12)' },
+              '50%': { boxShadow: '0 0 0 8px rgba(0,102,255,0.12)' },
             },
             slideUp: {
               from: { opacity: '0', transform: 'translateY(16px)' },
-              to:   { opacity: '1', transform: 'translateY(0)' },
+              to: { opacity: '1', transform: 'translateY(0)' },
             },
             fadeIn: {
               from: { opacity: '0' },
-              to:   { opacity: '1' },
+              to: { opacity: '1' },
             },
           },
         },
@@ -55,7 +53,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="css/styles.css"/>
+  <link rel="stylesheet" href="/css/styles.css" />
 </head>
 
 <body class="bg-base text-ink font-display min-h-screen">
@@ -72,18 +70,13 @@
     </div>
 
     <div class="flex items-center gap-2 font-mono text-xs">
-      <div
-        class="w-2 h-2 rounded-full transition-colors duration-500"
-        :class="btConectado ? 'bg-accent animate-pulse' : 'bg-dim'"
-      ></div>
-      <span :class="btConectado ? 'text-accent' : 'text-muted'">
-        <span x-text="btConectado ? 'BT conectado' : 'BT desconectado'"></span>
-      </span>
+      <div class="w-2 h-2 rounded-full transition-colors duration-500"
+        :class="btConectado ? 'bg-accent animate-pulse' : 'bg-dim'"></div>
+      <span :class="btConectado ? 'text-accent' : 'text-muted'"
+        x-text="btConectado ? 'BT conectado' : 'BT desconectado'"></span>
       <span class="text-dim mx-2">|</span>
-      <div
-        class="w-2 h-2 rounded-full transition-colors duration-500"
-        :class="wsConectado ? 'bg-accent' : 'bg-warn'"
-      ></div>
+      <div class="w-2 h-2 rounded-full transition-colors duration-500" :class="wsConectado ? 'bg-accent' : 'bg-warn'">
+      </div>
       <span :class="wsConectado ? 'text-accent' : 'text-warn'" x-text="wsConectado ? 'en línea' : 'sin señal'"></span>
     </div>
   </header>
@@ -93,26 +86,18 @@
     <!-- Gesto activo -->
     <section class="animate-slide-up" style="animation-delay:0.05s">
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">gesto activo</p>
-
       <div class="border border-border bg-panel p-6 flex items-center gap-6 relative overflow-hidden">
         <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent transition-all duration-300"
-             :class="gestoActivo !== 'Esperando...' ? 'opacity-100' : 'opacity-20'"></div>
-
+          :class="gestoActivo !== 'Esperando...' ? 'opacity-100' : 'opacity-20'"></div>
         <div
           class="w-20 h-20 border-2 flex items-center justify-center text-4xl flex-shrink-0 transition-all duration-300"
           :class="gestoActivo !== 'Esperando...' ? 'border-accent text-accent animate-pulse-accent' : 'border-dim text-muted'"
-          x-text="simboloGesto(gestoActivo)"
-        ></div>
-
+          x-text="simboloGesto(gestoActivo)"></div>
         <div>
-          <p
-            class="text-4xl font-black tracking-tight transition-all duration-300"
-            :class="gestoActivo !== 'Esperando...' ? 'text-ink' : 'text-muted'"
-            x-text="gestoActivo"
-          ></p>
+          <p class="text-4xl font-black tracking-tight transition-all duration-300"
+            :class="gestoActivo !== 'Esperando...' ? 'text-ink' : 'text-muted'" x-text="gestoActivo"></p>
           <p class="font-mono text-xs text-muted mt-1" x-text="accionGesto(gestoActivo)"></p>
         </div>
-
         <div class="ml-auto font-mono text-xs text-muted text-right">
           <p x-text="ultimaActualizacion"></p>
           <p class="text-dim mt-1" x-text="contadorGestos + ' gestos'"></p>
@@ -123,23 +108,21 @@
     <!-- Grid de gestos -->
     <section class="animate-slide-up" style="animation-delay:0.1s">
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">referencia de gestos</p>
-
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <template x-for="gesto in gestos" :key="gesto.nombre">
           <div
             class="border bg-panel p-4 flex items-start gap-4 cursor-default transition-all duration-200 hover:border-accent/50 hover:bg-surface"
-            :class="gestoActivo === gesto.nombre ? 'border-accent bg-blue-50' : 'border-border'"
-          >
+            :class="gestoActivo === gesto.nombre ? 'border-accent bg-blue-50' : 'border-border'">
             <div
               class="w-12 h-12 border-2 flex items-center justify-center text-2xl flex-shrink-0 transition-colors duration-200"
               :class="gestoActivo === gesto.nombre ? 'border-accent text-accent' : 'border-dim text-muted'"
-              x-text="gesto.simbolo"
-            ></div>
+              x-text="gesto.simbolo"></div>
             <div class="min-w-0">
               <p class="font-mono text-sm font-bold text-ink leading-tight" x-text="gesto.nombre"></p>
               <p class="text-xs text-muted mt-1 leading-relaxed" x-text="gesto.accion"></p>
               <div class="mt-2">
-                <span class="font-mono text-xs border border-dim text-muted px-2 py-0.5 bg-surface" x-text="gesto.tecla"></span>
+                <span class="font-mono text-xs border border-dim text-muted px-2 py-0.5 bg-surface"
+                  x-text="gesto.tecla"></span>
               </div>
             </div>
           </div>
@@ -150,24 +133,23 @@
     <!-- Cómo conectar -->
     <section class="animate-slide-up" style="animation-delay:0.15s">
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">cómo conectar</p>
-
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div class="border border-border bg-panel p-5">
           <div class="flex items-center gap-3 mb-4">
             <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">01</span>
             <p class="font-mono text-xs text-muted uppercase tracking-wider">Red WiFi</p>
           </div>
-          <p class="text-sm text-ink mb-1">Conéctate a la red <span class="font-mono text-accent font-bold">GESTOD</span></p>
+          <p class="text-sm text-ink mb-1">Conéctate a <span class="font-mono text-accent font-bold">GESTOD</span></p>
           <p class="font-mono text-xs text-muted">Contraseña: <span class="text-ink">gestod123</span></p>
-          <p class="font-mono text-xs text-muted mt-1">Luego abre: <span class="text-accent">192.168.4.1</span></p>
+          <p class="font-mono text-xs text-muted mt-1">Abre: <span class="text-accent">192.168.4.1</span></p>
         </div>
-
         <div class="border border-border bg-panel p-5">
           <div class="flex items-center gap-3 mb-4">
             <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">02</span>
             <p class="font-mono text-xs text-muted uppercase tracking-wider">Bluetooth</p>
           </div>
-          <p class="text-sm text-ink mb-1">Empareja <span class="font-mono text-accent font-bold">GESTOD Teclado</span></p>
+          <p class="text-sm text-ink mb-1">Empareja <span class="font-mono text-accent font-bold">GESTOD Teclado</span>
+          </p>
           <p class="font-mono text-xs text-muted">Ajustes → Bluetooth → agregar dispositivo</p>
           <p class="font-mono text-xs text-muted mt-1">Solo se empareja una vez</p>
         </div>
@@ -178,12 +160,9 @@
     <section class="animate-slide-up" style="animation-delay:0.2s">
       <div class="flex items-center justify-between mb-3">
         <p class="font-mono text-xs text-muted uppercase tracking-widest">historial reciente</p>
-        <button
-          @click="historial = []"
-          class="font-mono text-xs text-muted hover:text-warn transition-colors"
-        >limpiar</button>
+        <button @click="historial = []"
+          class="font-mono text-xs text-muted hover:text-warn transition-colors">limpiar</button>
       </div>
-
       <div class="border border-border bg-panel divide-y divide-border min-h-16">
         <template x-if="historial.length === 0">
           <p class="font-mono text-xs text-dim p-4">Sin gestos aún...</p>
@@ -201,11 +180,12 @@
 
   </main>
 
-  <footer class="border-t border-border bg-base px-6 py-4 flex items-center justify-between animate-fade-in">
+  <footer class="border-t border-border bg-base px-6 py-4 flex items-center justify-between">
     <p class="font-mono text-xs text-muted">GESTOD v1.0 — ESP32 + PAJ7620</p>
     <p class="font-mono text-xs text-muted">192.168.4.1</p>
   </footer>
 
-  <script src="js/app.js"></script>
+  <script src="/js/app.js"></script>
 </body>
+
 </html>
