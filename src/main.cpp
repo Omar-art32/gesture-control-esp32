@@ -1,99 +1,116 @@
 #include <Arduino.h>
-
-// ── Módulos del proyecto ─────────────────────────────────────────
 #include "config.h"
 #include "led_rgb.h"
 #include "pantalla_oled.h"
 #include "gestos.h"
+#include "perfiles.h"
 #include "bluetooth_hid.h"
 #include "servidor_web.h"
 
 // ═══════════════════════════════════════════════════════════════
 //  GESTOD — main.cpp
-//
-//  Este archivo solo orquesta los módulos.
-//  Toda la lógica vive en include/*.h
-//
-//  Flujo:
-//    1. setup() inicializa cada módulo en orden
-//    2. loop() lee el sensor, actualiza estado y notifica
 // ═══════════════════════════════════════════════════════════════
 
-// ── Estado global mínimo ──────────────────────────────────────────
-static Gestos::Gesto  _gestoActual      = Gestos::Gesto::NINGUNO;
-static bool           _btConectadoPrev  = false;   // para detectar cambios de estado
+static Gestos::Gesto _gestoActual = Gestos::Gesto::NINGUNO;
+static bool _btConectadoPrev = false;
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── Muestra el modo activo en OLED y LED ──────────────────────────
+void mostrarCambioModo()
+{
+    LedRGB::parpadear(Perfiles::colorModoActual(), 3, 100);
+    LedRGB::establecerColor(Perfiles::colorModoActual());
 
-// Actualiza OLED, RGB y WebSocket con el estado actual
-void actualizarSalidas(Gestos::Gesto gesto) {
-    const char* nombre      = Gestos::nombreGesto(gesto);
-    bool        btConectado = BluetoothHID::estaConectado();
-    String      ipAP        = ServidorWeb::obtenerIP();
+    PantallaOLED::mostrarGesto(
+        Perfiles::nombreModoActual(),
+        PantallaOLED::Icono::NINGUNO);
 
-    PantallaOLED::mostrarEstado(nombre, btConectado, ipAP.c_str());
-    ServidorWeb::notificarGesto(nombre, btConectado);
+    Serial.printf("[Modo] %s\n", Perfiles::nombreModoActual());
+    ServidorWeb::notificarGesto("Modo cambiado",
+                                BluetoothHID::estaConectado());
+}
 
-    // Color del LED según gesto o estado BT
-    if (gesto != Gestos::Gesto::NINGUNO) {
-        LedRGB::parpadear(LedRGB::COLOR_GESTO, 1, 80);
+// ── Procesa un gesto detectado ────────────────────────────────────
+void procesarGesto(Gestos::Gesto gesto)
+{
+    _gestoActual = gesto;
+
+    // Wave = cambiar modo
+    if (gesto == Gestos::Gesto::WAVE)
+    {
+        Perfiles::siguienteModo();
+        mostrarCambioModo();
+        return;
     }
 
-    LedRGB::establecerColor(btConectado ? LedRGB::COLOR_CONECTADO
-                                        : LedRGB::COLOR_ESPERANDO);
+    // Resto de gestos → ejecutar acción del perfil activo
+    const Perfiles::Accion &accion = BluetoothHID::enviarGesto(gesto);
+
+    Serial.printf("[Gesto] %s | Modo: %s | Accion: %s\n",
+                  Gestos::nombreGesto(gesto),
+                  Perfiles::nombreModoActual(),
+                  accion.nombre);
+
+    PantallaOLED::mostrarGesto(accion.nombre, PantallaOLED::Icono::NINGUNO);
+
+    LedRGB::parpadear(Perfiles::colorModoActual(), 1, 80);
+    LedRGB::establecerColor(Perfiles::colorModoActual());
+
+    ServidorWeb::notificarGesto(accion.nombre,
+                                BluetoothHID::estaConectado());
 }
 
 // ── setup() ───────────────────────────────────────────────────────
-void setup() {
+void setup()
+{
     Serial.begin(115200);
     Serial.println("\n══ GESTOD iniciando ══");
 
     LedRGB::iniciar();
-    LedRGB::establecerColor(LedRGB::AMARILLO);   // señal visual: inicializando
+    LedRGB::establecerColor(LedRGB::AMARILLO);
 
     bool oledOk = PantallaOLED::iniciar();
-    if (!oledOk) {
-        Serial.println("[!] OLED no disponible — continuando sin pantalla");
-    }
+    if (!oledOk)
+        Serial.println("[!] OLED no disponible");
 
     bool sensorOk = Gestos::iniciar();
-    if (!sensorOk) {
-        PantallaOLED::mostrarError("Sensor PAJ7620");
+    if (!sensorOk)
+    {
+        PantallaOLED::mostrarError("PAJ7620 ERROR");
         LedRGB::parpadear(LedRGB::ROJO, 5);
     }
 
     bool webOk = ServidorWeb::iniciar();
-    if (!webOk) {
-        PantallaOLED::mostrarError("LittleFS / WiFi");
+    if (!webOk)
+    {
+        PantallaOLED::mostrarError("WiFi ERROR");
         LedRGB::parpadear(LedRGB::ROJO, 5);
     }
 
     BluetoothHID::iniciar();
 
-    // Estado inicial en pantalla
-    actualizarSalidas(Gestos::Gesto::NINGUNO);
+    // Estado inicial — modo 0 PRESENTACION
+    LedRGB::establecerColor(Perfiles::colorModoActual());
+
     Serial.println("══ GESTOD listo ══\n");
 }
 
 // ── loop() ────────────────────────────────────────────────────────
-void loop() {
+void loop()
+{
+    PantallaOLED::actualizar();
+
     Gestos::Gesto gesto = Gestos::leer();
-
-    if (gesto != Gestos::Gesto::NINGUNO) {
-        _gestoActual = gesto;
-
-        Serial.printf("[Gesto] %s\n", Gestos::nombreGesto(gesto));
-
-        BluetoothHID::enviarGesto(gesto);
-        actualizarSalidas(gesto);
+    if (gesto != Gestos::Gesto::NINGUNO)
+    {
+        procesarGesto(gesto);
     }
 
-    // Notificar cambio de estado BT sin esperar un gesto
     bool btAhora = BluetoothHID::estaConectado();
-    if (btAhora != _btConectadoPrev) {
+    if (btAhora != _btConectadoPrev)
+    {
         _btConectadoPrev = btAhora;
-        actualizarSalidas(_gestoActual);
-
         Serial.printf("[BT] %s\n", btAhora ? "Conectado" : "Desconectado");
+        LedRGB::establecerColor(btAhora ? Perfiles::colorModoActual()
+                                        : LedRGB::COLOR_ESPERANDO);
     }
 }

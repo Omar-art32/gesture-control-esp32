@@ -1,174 +1,152 @@
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  GESTOD — app.js
-//  Alpine.js store principal
-//  WebSocket se conecta al ESP32 en ws://192.168.4.1/ws
-// ═══════════════════════════════════════════════════════
+//  WebSocket recibe gesto + modo
+//  Botones envían comando setModo al ESP32
+// ═══════════════════════════════════════════════════════════════
 
-// Catálogo completo de gestos con símbolo, acción y tecla enviada
-const CATALOGO_GESTOS = [
+const MODOS = [
   {
-    nombre:  '<- Izquierda',
-    simbolo: '←',
-    accion:  'Pista / diapositiva anterior',
-    tecla:   'MEDIA_PREV',
+    nombre: 'Presentación',
+    color: 'text-blue-600',
+    bgActivo: 'bg-blue-50 border-blue-400',
+    gestos: [
+      { gesto: '→ Derecha', accion: 'Siguiente diapositiva', tecla: '→' },
+      { gesto: '← Izquierda', accion: 'Diapositiva anterior', tecla: '←' },
+      { gesto: '↑ Arriba', accion: 'Iniciar presentación', tecla: 'F5' },
+      { gesto: '↓ Abajo', accion: 'Pantalla negra', tecla: 'B' },
+      { gesto: '✦ Acercar', accion: 'Reanudar', tecla: 'Enter' },
+      { gesto: '✧ Alejar', accion: 'Terminar presentación', tecla: 'Esc' },
+      { gesto: '↻ Horario', accion: 'Zoom +', tecla: 'Ctrl+↑' },
+      { gesto: '↺ Antihorario', accion: 'Zoom -', tecla: 'Ctrl+↓' },
+    ],
   },
   {
-    nombre:  '-> Derecha',
-    simbolo: '→',
-    accion:  'Siguiente pista / diapositiva',
-    tecla:   'MEDIA_NEXT',
+    nombre: 'Sistema',
+    color: 'text-cyan-600',
+    bgActivo: 'bg-cyan-50 border-cyan-400',
+    gestos: [
+      { gesto: '→ Derecha', accion: 'Volumen +', tecla: 'F2' },
+      { gesto: '← Izquierda', accion: 'Volumen -', tecla: 'F1' },
+      { gesto: '↑ Arriba', accion: 'Brillo +', tecla: 'F2' },
+      { gesto: '↓ Abajo', accion: 'Brillo -', tecla: 'F1' },
+      { gesto: '✦ Acercar', accion: 'Captura de pantalla', tecla: 'Win+Shift+S' },
+      { gesto: '✧ Alejar', accion: 'Bloquear PC', tecla: 'Win+L' },
+      { gesto: '↻ Horario', accion: 'Escritorio →', tecla: 'Ctrl+Win+→' },
+      { gesto: '↺ Antihorario', accion: 'Escritorio ←', tecla: 'Ctrl+Win+←' },
+    ],
   },
   {
-    nombre:  '^ Arriba',
-    simbolo: '↑',
-    accion:  'Subir volumen',
-    tecla:   'MEDIA_VOL+',
+    nombre: 'Música',
+    color: 'text-pink-600',
+    bgActivo: 'bg-pink-50 border-pink-400',
+    gestos: [
+      { gesto: '→ Derecha', accion: 'Siguiente canción', tecla: 'Ctrl+→' },
+      { gesto: '← Izquierda', accion: 'Canción anterior', tecla: 'Ctrl+←' },
+      { gesto: '↑ Arriba', accion: 'Volumen +', tecla: 'F2' },
+      { gesto: '↓ Abajo', accion: 'Volumen -', tecla: 'F1' },
+      { gesto: '✦ Acercar', accion: 'Play / Pause', tecla: 'Ctrl+P' },
+      { gesto: '✧ Alejar', accion: 'Stop', tecla: 'Ctrl+S' },
+      { gesto: '↻ Horario', accion: 'Avanzar 10s', tecla: '→' },
+      { gesto: '↺ Antihorario', accion: 'Retroceder 10s', tecla: '←' },
+    ],
   },
   {
-    nombre:  'v Abajo',
-    simbolo: '↓',
-    accion:  'Bajar volumen',
-    tecla:   'MEDIA_VOL-',
-  },
-  {
-    nombre:  '~ Wave',
-    simbolo: '〜',
-    accion:  'Play / Pause',
-    tecla:   'MEDIA_PLAY',
-  },
-  {
-    nombre:  '* Acercar',
-    simbolo: '✦',
-    accion:  'Pantalla completa',
-    tecla:   'F11',
-  },
-  {
-    nombre:  '* Alejar',
-    simbolo: '✧',
-    accion:  'Salir / Escape',
-    tecla:   'ESC',
-  },
-  {
-    nombre:  '@ Horario',
-    simbolo: '↻',
-    accion:  'Scroll hacia abajo',
-    tecla:   '↓ ↓ ↓',
-  },
-  {
-    nombre:  '@ Antihorario',
-    simbolo: '↺',
-    accion:  'Scroll hacia arriba',
-    tecla:   '↑ ↑ ↑',
+    nombre: 'Ventanas',
+    color: 'text-yellow-600',
+    bgActivo: 'bg-yellow-50 border-yellow-400',
+    gestos: [
+      { gesto: '→ Derecha', accion: 'Alt+Tab →', tecla: 'Alt+Tab' },
+      { gesto: '← Izquierda', accion: 'Alt+Tab ←', tecla: 'Alt+Shift+Tab' },
+      { gesto: '↑ Arriba', accion: 'Maximizar ventana', tecla: 'Win+↑' },
+      { gesto: '↓ Abajo', accion: 'Minimizar ventana', tecla: 'Win+↓' },
+      { gesto: '✦ Acercar', accion: 'Cerrar ventana', tecla: 'Alt+F4' },
+      { gesto: '✧ Alejar', accion: 'Mostrar escritorio', tecla: 'Win+D' },
+      { gesto: '↻ Horario', accion: 'Ventana →', tecla: 'Win+→' },
+      { gesto: '↺ Antihorario', accion: 'Ventana ←', tecla: 'Win+←' },
+    ],
   },
 ];
 
-// Mapa para búsqueda rápida por nombre
-const MAPA_GESTOS = Object.fromEntries(
-  CATALOGO_GESTOS.map(g => [g.nombre, g])
-);
-
-// ── Store principal de Alpine.js ──────────────────────────
+// ── Store principal Alpine.js ─────────────────────────────────────
 function gestod() {
   return {
-    // Estado reactivo
-    gestoActivo:       'Esperando...',
-    btConectado:       false,
-    wsConectado:       false,
+    gestoActivo: 'Esperando...',
+    btConectado: false,
+    wsConectado: false,
+    modoActivo: 0,
     ultimaActualizacion: '--:--:--',
-    contadorGestos:    0,
-    historial:         [],
-    gestos:            CATALOGO_GESTOS,
+    contadorGestos: 0,
+    historial: [],
+    modos: MODOS,
 
-    // Conexión WebSocket
     _socket: null,
     _intervaloReconexion: null,
 
-    // ── Ciclo de vida ──────────────────────────────────────
     iniciar() {
       this._conectarWebSocket();
     },
 
-    // ── WebSocket ──────────────────────────────────────────
+    // ── WebSocket ─────────────────────────────────────────────
     _conectarWebSocket() {
       const url = `ws://${location.hostname}/ws`;
-
       this._socket = new WebSocket(url);
 
       this._socket.onopen = () => {
         this.wsConectado = true;
         clearInterval(this._intervaloReconexion);
-        console.log('[WS] Conectado a', url);
       };
 
-      this._socket.onmessage = (evento) => {
-        this._procesarMensaje(evento.data);
-      };
+      this._socket.onmessage = (e) => this._procesarMensaje(e.data);
 
       this._socket.onclose = () => {
         this.wsConectado = false;
-        console.warn('[WS] Desconectado — reintentando en 3s...');
         this._intervaloReconexion = setInterval(() => {
           this._conectarWebSocket();
         }, 3000);
       };
-
-      this._socket.onerror = (error) => {
-        console.error('[WS] Error:', error);
-      };
     },
 
-    // ── Procesar mensaje del ESP32 ─────────────────────────
-    // Formato esperado: { "gesto": "<- Izquierda", "bt": true }
+    // ── Procesar mensaje del ESP32 ────────────────────────────
+    // Formato: { gesto, bt, modo, modoNombre }
     _procesarMensaje(datos) {
       let payload;
-      try {
-        payload = JSON.parse(datos);
-      } catch {
-        console.warn('[WS] Mensaje no válido:', datos);
-        return;
-      }
+      try { payload = JSON.parse(datos); }
+      catch { return; }
 
-      const nombreGesto = payload.gesto ?? 'Esperando...';
-      const btEstado    = payload.bt   ?? false;
+      this.btConectado = payload.bt ?? false;
+      this.modoActivo = payload.modo ?? 0;
 
-      // Actualizar estado
-      this.btConectado = btEstado;
-
-      if (nombreGesto !== 'Esperando...') {
-        this.gestoActivo = nombreGesto;
+      const nombre = payload.gesto ?? 'Esperando...';
+      if (nombre !== 'Esperando...') {
+        this.gestoActivo = nombre;
         this.contadorGestos++;
         this.ultimaActualizacion = this._horaActual();
-
-        // Agregar al historial
         this.historial.push({
-          gesto:  nombreGesto,
-          accion: this.accionGesto(nombreGesto),
-          hora:   this._horaActual(),
+          gesto: nombre,
+          modo: MODOS[this.modoActivo]?.nombre ?? '',
+          hora: this._horaActual(),
         });
-
-        // Mantener máximo 50 entradas
-        if (this.historial.length > 50) {
-          this.historial.shift();
-        }
+        if (this.historial.length > 50) this.historial.shift();
       } else {
         this.gestoActivo = 'Esperando...';
       }
     },
 
-    // ── Helpers de UI ─────────────────────────────────────
-    simboloGesto(nombre) {
-      return MAPA_GESTOS[nombre]?.simbolo ?? '·';
+    // ── Cambiar modo desde la web ─────────────────────────────
+    cambiarModo(indice) {
+      if (!this._socket || this._socket.readyState !== WebSocket.OPEN) return;
+      this._socket.send(JSON.stringify({ cmd: 'setModo', modo: indice }));
+      this.modoActivo = indice;
     },
 
-    accionGesto(nombre) {
-      return MAPA_GESTOS[nombre]?.accion ?? 'Sin acción asignada';
+    // ── Helpers ───────────────────────────────────────────────
+    gestosDelModoActivo() {
+      return MODOS[this.modoActivo]?.gestos ?? [];
     },
 
     _horaActual() {
       return new Date().toLocaleTimeString('es-MX', {
-        hour:   '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
       });
     },
   };

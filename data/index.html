@@ -5,98 +5,86 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GESTOD — Control de Gestos</title>
-
-  <!-- Servidos desde LittleFS — sin internet requerido -->
   <script src="/js/tailwind.min.js"></script>
   <script defer src="/js/alpine.min.js"></script>
-
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            display: ['system-ui', 'sans-serif'],
-            mono: ['monospace'],
-          },
+          fontFamily: { display: ['system-ui', 'sans-serif'], mono: ['monospace'] },
           colors: {
-            base: '#ffffff',
-            surface: '#f5f5f5',
-            panel: '#fafafa',
-            border: '#e0e0e0',
-            accent: '#0066ff',
-            warn: '#ff4422',
-            muted: '#888888',
-            dim: '#cccccc',
-            ink: '#111111',
-          },
-          animation: {
-            'pulse-accent': 'pulseAccent 2s ease-in-out infinite',
-            'slide-up': 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
-            'fade-in': 'fadeIn 0.6s ease both',
-          },
-          keyframes: {
-            pulseAccent: {
-              '0%,100%': { boxShadow: '0 0 0 0 rgba(0,102,255,0)' },
-              '50%': { boxShadow: '0 0 0 8px rgba(0,102,255,0.12)' },
-            },
-            slideUp: {
-              from: { opacity: '0', transform: 'translateY(16px)' },
-              to: { opacity: '1', transform: 'translateY(0)' },
-            },
-            fadeIn: {
-              from: { opacity: '0' },
-              to: { opacity: '1' },
-            },
+            base: '#ffffff', surface: '#f5f5f5', panel: '#fafafa',
+            border: '#e0e0e0', accent: '#0066ff', warn: '#ff4422',
+            muted: '#888888', dim: '#cccccc', ink: '#111111',
           },
         },
       },
     }
   </script>
-
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 
 <body class="bg-base text-ink font-display min-h-screen">
-
   <div class="fixed inset-0 grid-bg pointer-events-none"></div>
 
   <!-- Header -->
-  <header class="relative border-b border-border bg-base px-6 py-4 flex items-center justify-between animate-fade-in">
+  <header class="relative border-b border-border bg-base px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 border-2 border-accent flex items-center justify-center">
         <div class="w-3 h-3 bg-accent"></div>
       </div>
-      <span class="text-xl font-black tracking-widest uppercase text-ink">Gestod</span>
+      <span class="text-xl font-black tracking-widest uppercase">Gestod</span>
     </div>
-
     <div class="flex items-center gap-2 font-mono text-xs">
       <div class="w-2 h-2 rounded-full transition-colors duration-500"
         :class="btConectado ? 'bg-accent animate-pulse' : 'bg-dim'"></div>
       <span :class="btConectado ? 'text-accent' : 'text-muted'"
         x-text="btConectado ? 'BT conectado' : 'BT desconectado'"></span>
       <span class="text-dim mx-2">|</span>
-      <div class="w-2 h-2 rounded-full transition-colors duration-500" :class="wsConectado ? 'bg-accent' : 'bg-warn'">
-      </div>
+      <div class="w-2 h-2 rounded-full" :class="wsConectado ? 'bg-accent' : 'bg-warn'"></div>
       <span :class="wsConectado ? 'text-accent' : 'text-warn'" x-text="wsConectado ? 'en línea' : 'sin señal'"></span>
     </div>
   </header>
 
-  <main class="relative max-w-5xl mx-auto px-6 py-10 space-y-10">
+  <main class="relative max-w-5xl mx-auto px-6 py-8 space-y-8">
+
+    <!-- Selector de modos -->
+    <section>
+      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">modo activo — Wave cambia de modo</p>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <template x-for="(modo, i) in modos" :key="i">
+          <button @click="cambiarModo(i)" class="border-2 p-3 text-left transition-all duration-200" :class="modoActivo === i
+            ? (i===0 ? 'border-blue-400 bg-blue-50' :
+               i===1 ? 'border-cyan-400 bg-cyan-50' :
+               i===2 ? 'border-pink-400 bg-pink-50' :
+                       'border-yellow-400 bg-yellow-50')
+            : 'border-border bg-panel hover:border-accent/40'">
+            <!-- punto de color -->
+            <div class="w-3 h-3 rounded-full mb-2" :class="i===0 ? 'bg-blue-500' :
+                       i===1 ? 'bg-cyan-500' :
+                       i===2 ? 'bg-pink-500' : 'bg-yellow-500'"></div>
+            <p class="font-mono text-xs font-bold text-ink" x-text="modo.nombre"></p>
+            <p class="font-mono text-xs text-muted mt-0.5" x-text="'Modo ' + (i+1)"></p>
+            <p x-show="modoActivo === i" class="font-mono text-xs text-accent mt-1">● activo</p>
+          </button>
+        </template>
+      </div>
+    </section>
 
     <!-- Gesto activo -->
-    <section class="animate-slide-up" style="animation-delay:0.05s">
+    <section>
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">gesto activo</p>
-      <div class="border border-border bg-panel p-6 flex items-center gap-6 relative overflow-hidden">
+      <div class="border border-border bg-panel p-5 flex items-center gap-5 relative overflow-hidden">
         <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent transition-all duration-300"
           :class="gestoActivo !== 'Esperando...' ? 'opacity-100' : 'opacity-20'"></div>
-        <div
-          class="w-20 h-20 border-2 flex items-center justify-center text-4xl flex-shrink-0 transition-all duration-300"
-          :class="gestoActivo !== 'Esperando...' ? 'border-accent text-accent animate-pulse-accent' : 'border-dim text-muted'"
-          x-text="simboloGesto(gestoActivo)"></div>
+        <div class="w-16 h-16 border-2 flex items-center justify-center text-3xl flex-shrink-0"
+          :class="gestoActivo !== 'Esperando...' ? 'border-accent text-accent' : 'border-dim text-muted'">
+          <span x-text="gestoActivo !== 'Esperando...' ? '✓' : '·'"></span>
+        </div>
         <div>
-          <p class="text-4xl font-black tracking-tight transition-all duration-300"
+          <p class="text-3xl font-black tracking-tight"
             :class="gestoActivo !== 'Esperando...' ? 'text-ink' : 'text-muted'" x-text="gestoActivo"></p>
-          <p class="font-mono text-xs text-muted mt-1" x-text="accionGesto(gestoActivo)"></p>
+          <p class="font-mono text-xs text-muted mt-1" x-text="'Modo: ' + (modos[modoActivo]?.nombre ?? '')"></p>
         </div>
         <div class="ml-auto font-mono text-xs text-muted text-right">
           <p x-text="ultimaActualizacion"></p>
@@ -105,76 +93,71 @@
       </div>
     </section>
 
-    <!-- Grid de gestos -->
-    <section class="animate-slide-up" style="animation-delay:0.1s">
-      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">referencia de gestos</p>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <template x-for="gesto in gestos" :key="gesto.nombre">
-          <div
-            class="border bg-panel p-4 flex items-start gap-4 cursor-default transition-all duration-200 hover:border-accent/50 hover:bg-surface"
-            :class="gestoActivo === gesto.nombre ? 'border-accent bg-blue-50' : 'border-border'">
-            <div
-              class="w-12 h-12 border-2 flex items-center justify-center text-2xl flex-shrink-0 transition-colors duration-200"
-              :class="gestoActivo === gesto.nombre ? 'border-accent text-accent' : 'border-dim text-muted'"
-              x-text="gesto.simbolo"></div>
-            <div class="min-w-0">
-              <p class="font-mono text-sm font-bold text-ink leading-tight" x-text="gesto.nombre"></p>
-              <p class="text-xs text-muted mt-1 leading-relaxed" x-text="gesto.accion"></p>
-              <div class="mt-2">
-                <span class="font-mono text-xs border border-dim text-muted px-2 py-0.5 bg-surface"
-                  x-text="gesto.tecla"></span>
-              </div>
-            </div>
+    <!-- Tabla de gestos del modo activo -->
+    <section>
+      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3"
+        x-text="'gestos — ' + (modos[modoActivo]?.nombre ?? '')"></p>
+      <div class="border border-border bg-panel divide-y divide-border">
+        <template x-for="(g, i) in gestosDelModoActivo()" :key="i">
+          <div class="flex items-center gap-4 px-4 py-2 hover:bg-surface transition-colors">
+            <span class="font-mono text-sm w-28 flex-shrink-0 text-ink" x-text="g.gesto"></span>
+            <span class="text-xs text-muted flex-1" x-text="g.accion"></span>
+            <span class="font-mono text-xs border border-dim text-muted px-2 py-0.5 bg-surface flex-shrink-0"
+              x-text="g.tecla"></span>
           </div>
         </template>
-      </div>
-    </section>
-
-    <!-- Cómo conectar -->
-    <section class="animate-slide-up" style="animation-delay:0.15s">
-      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">cómo conectar</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div class="border border-border bg-panel p-5">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">01</span>
-            <p class="font-mono text-xs text-muted uppercase tracking-wider">Red WiFi</p>
-          </div>
-          <p class="text-sm text-ink mb-1">Conéctate a <span class="font-mono text-accent font-bold">GESTOD</span></p>
-          <p class="font-mono text-xs text-muted">Contraseña: <span class="text-ink">gestod123</span></p>
-          <p class="font-mono text-xs text-muted mt-1">Abre: <span class="text-accent">192.168.4.1</span></p>
-        </div>
-        <div class="border border-border bg-panel p-5">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">02</span>
-            <p class="font-mono text-xs text-muted uppercase tracking-wider">Bluetooth</p>
-          </div>
-          <p class="text-sm text-ink mb-1">Empareja <span class="font-mono text-accent font-bold">GESTOD Teclado</span>
-          </p>
-          <p class="font-mono text-xs text-muted">Ajustes → Bluetooth → agregar dispositivo</p>
-          <p class="font-mono text-xs text-muted mt-1">Solo se empareja una vez</p>
+        <!-- Wave siempre al final -->
+        <div class="flex items-center gap-4 px-4 py-2 bg-accent/5">
+          <span class="font-mono text-sm w-28 flex-shrink-0 text-accent">〜 Wave</span>
+          <span class="text-xs text-muted flex-1">Cambiar modo</span>
+          <span
+            class="font-mono text-xs border border-accent/30 text-accent px-2 py-0.5 bg-surface flex-shrink-0">MODO+1</span>
         </div>
       </div>
     </section>
 
     <!-- Historial -->
-    <section class="animate-slide-up" style="animation-delay:0.2s">
+    <section>
       <div class="flex items-center justify-between mb-3">
-        <p class="font-mono text-xs text-muted uppercase tracking-widest">historial reciente</p>
+        <p class="font-mono text-xs text-muted uppercase tracking-widest">historial</p>
         <button @click="historial = []"
           class="font-mono text-xs text-muted hover:text-warn transition-colors">limpiar</button>
       </div>
-      <div class="border border-border bg-panel divide-y divide-border min-h-16">
+      <div class="border border-border bg-panel divide-y divide-border min-h-12">
         <template x-if="historial.length === 0">
           <p class="font-mono text-xs text-dim p-4">Sin gestos aún...</p>
         </template>
         <template x-for="(item, i) in historial.slice().reverse().slice(0,8)" :key="i">
           <div class="flex items-center gap-4 px-4 py-2 hover:bg-surface transition-colors">
             <span class="font-mono text-xs text-dim w-16 flex-shrink-0" x-text="item.hora"></span>
-            <span class="text-lg w-8 flex-shrink-0 text-accent" x-text="simboloGesto(item.gesto)"></span>
-            <span class="font-mono text-xs text-ink" x-text="item.gesto"></span>
-            <span class="ml-auto font-mono text-xs text-muted" x-text="item.accion"></span>
+            <span class="font-mono text-xs text-ink flex-1" x-text="item.gesto"></span>
+            <span class="font-mono text-xs text-muted" x-text="item.modo"></span>
           </div>
         </template>
+      </div>
+    </section>
+
+    <!-- Cómo conectar -->
+    <section>
+      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">cómo conectar</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="border border-border bg-panel p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">01</span>
+            <p class="font-mono text-xs text-muted uppercase">Red WiFi</p>
+          </div>
+          <p class="text-sm text-ink">Conéctate a <span class="font-mono text-accent font-bold">GESTOD</span></p>
+          <p class="font-mono text-xs text-muted mt-1">Contraseña: <span class="text-ink">gestod123</span></p>
+          <p class="font-mono text-xs text-muted mt-1">Abre: <span class="text-accent">192.168.4.1</span></p>
+        </div>
+        <div class="border border-border bg-panel p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="font-mono text-xs text-accent border border-accent px-2 py-0.5">02</span>
+            <p class="font-mono text-xs text-muted uppercase">Bluetooth</p>
+          </div>
+          <p class="text-sm text-ink">Empareja <span class="font-mono text-accent font-bold">GESTOD Teclado</span></p>
+          <p class="font-mono text-xs text-muted mt-1">Ajustes → Bluetooth → agregar dispositivo</p>
+        </div>
       </div>
     </section>
 

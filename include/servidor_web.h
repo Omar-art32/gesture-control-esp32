@@ -5,10 +5,12 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include "config.h"
+#include "perfiles.h"
 
 // ═══════════════════════════════════════════════════════════════
 //  Módulo Servidor Web
-//  WiFi Access Point + archivos estáticos + WebSocket
+//  WebSocket notifica gesto + modo activo
+//  Recibe comandos de cambio de modo desde la web
 // ═══════════════════════════════════════════════════════════════
 
 namespace ServidorWeb
@@ -28,10 +30,38 @@ namespace ServidorWeb
         if (tipo == WS_EVT_CONNECT)
         {
             Serial.printf("[WS] Cliente #%u conectado\n", cliente->id());
+
+            // Enviar estado actual al cliente recién conectado
+            JsonDocument doc;
+            doc["gesto"] = "Esperando...";
+            doc["bt"] = false;
+            doc["modo"] = Perfiles::modoActual();
+            doc["modoNombre"] = Perfiles::nombreModoActual();
+            String json;
+            serializeJson(doc, json);
+            cliente->text(json);
         }
         else if (tipo == WS_EVT_DISCONNECT)
         {
             Serial.printf("[WS] Cliente #%u desconectado\n", cliente->id());
+        }
+        else if (tipo == WS_EVT_DATA && longitud > 0)
+        {
+            // Recibir comando desde la web
+            // Formato esperado: {"cmd":"setModo","modo":2}
+            String msg = String((char *)datos).substring(0, longitud);
+            JsonDocument doc;
+            if (deserializeJson(doc, msg) == DeserializationError::Ok)
+            {
+                const char *cmd = doc["cmd"] | "";
+                if (strcmp(cmd, "setModo") == 0)
+                {
+                    uint8_t modo = doc["modo"] | 0;
+                    Perfiles::establecerModo(modo);
+                    Serial.printf("[Web] Modo cambiado a %s\n",
+                                  Perfiles::nombreModoActual());
+                }
+            }
         }
     }
 
@@ -45,13 +75,11 @@ namespace ServidorWeb
 
         WiFi.softAP(WIFI_SSID, WIFI_PASSWORD);
         Serial.printf("[WiFi] AP activo — SSID: %s  IP: %s\n",
-                      WIFI_SSID,
-                      WiFi.softAPIP().toString().c_str());
+                      WIFI_SSID, WiFi.softAPIP().toString().c_str());
 
         _ws.onEvent(_onWebSocketEvento);
         _servidor.addHandler(&_ws);
 
-        // Servir cada archivo explícitamente — sin búsqueda de .gz
         _servidor.on("/", HTTP_GET, [](AsyncWebServerRequest *req)
                      { req->send(LittleFS, "/index.html", "text/html"); });
         _servidor.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *req)
@@ -69,10 +97,11 @@ namespace ServidorWeb
                              { req->send(404, "text/plain", "No encontrado"); });
 
         _servidor.begin();
-        Serial.println("[Web] Servidor HTTP iniciado en puerto 80");
+        Serial.println("[Web] Servidor HTTP iniciado");
         return true;
     }
 
+    // Notifica gesto + modo a todos los clientes WebSocket
     inline void notificarGesto(const char *nombreGesto, bool btConectado)
     {
         _ws.cleanupClients();
@@ -82,6 +111,8 @@ namespace ServidorWeb
         JsonDocument doc;
         doc["gesto"] = nombreGesto;
         doc["bt"] = btConectado;
+        doc["modo"] = Perfiles::modoActual();
+        doc["modoNombre"] = Perfiles::nombreModoActual();
 
         String json;
         serializeJson(doc, json);

@@ -3,87 +3,83 @@
 #include <BleKeyboard.h>
 #include "config.h"
 #include "gestos.h"
+#include "perfiles.h"
 
 // ═══════════════════════════════════════════════════════════════
 //  Módulo Bluetooth HID
-//  Librería: t-vk/ESP32 BLE Keyboard @ ^0.3.2
-//  Mapea cada gesto a una tecla o combinación de teclado
+//  Ejecuta la acción del perfil activo para cada gesto
 // ═══════════════════════════════════════════════════════════════
 
-namespace BluetoothHID {
+namespace BluetoothHID
+{
 
     static BleKeyboard _teclado(BT_NOMBRE, BT_FABRICANTE, BT_BATERIA);
 
-    // ── Inicialización ────────────────────────────────────────────
-    inline void iniciar() {
+    inline void iniciar()
+    {
         _teclado.begin();
-        Serial.println("[BT] Esperando conexión BLE...");
+        Serial.println("[BT] Esperando conexion BLE...");
     }
 
-    inline bool estaConectado() {
+    inline bool estaConectado()
+    {
         return _teclado.isConnected();
     }
 
-    // ── Mapeo gesto → acción de teclado ──────────────────────────
-    //
-    //  Izquierda     → Anterior pista / diapositiva
-    //  Derecha       → Siguiente pista / diapositiva
-    //  Arriba        → Volumen +
-    //  Abajo         → Volumen -
-    //  Wave          → Play / Pause
-    //  Acercar       → Pantalla completa (F11)
-    //  Alejar        → Escape
-    //  Horario       → Scroll abajo
-    //  Antihorario   → Scroll arriba
-    //
-    inline void enviarGesto(Gestos::Gesto gesto) {
-        if (!estaConectado()) return;
-
-        switch (gesto) {
-            case Gestos::Gesto::IZQUIERDA:
-                _teclado.write(KEY_MEDIA_PREVIOUS_TRACK);
-                break;
-
-            case Gestos::Gesto::DERECHA:
-                _teclado.write(KEY_MEDIA_NEXT_TRACK);
-                break;
-
-            case Gestos::Gesto::ARRIBA:
-                _teclado.write(KEY_MEDIA_VOLUME_UP);
-                break;
-
-            case Gestos::Gesto::ABAJO:
-                _teclado.write(KEY_MEDIA_VOLUME_DOWN);
-                break;
-
-            case Gestos::Gesto::WAVE:
-                _teclado.write(KEY_MEDIA_PLAY_PAUSE);
-                break;
-
-            case Gestos::Gesto::ACERCAR:
-                _teclado.write(KEY_F11);   // pantalla completa
-                break;
-
-            case Gestos::Gesto::ALEJAR:
-                _teclado.write(KEY_ESC);
-                break;
-
-            case Gestos::Gesto::HORARIO:
-                // Scroll abajo = flecha abajo 3 veces
-                for (uint8_t i = 0; i < 3; i++) {
-                    _teclado.write(KEY_DOWN_ARROW);
-                }
-                break;
-
-            case Gestos::Gesto::ANTIHORARIO:
-                for (uint8_t i = 0; i < 3; i++) {
-                    _teclado.write(KEY_UP_ARROW);
-                }
-                break;
-
-            default:
-                break;
+    // Convierte gesto a slot de perfil
+    inline Perfiles::Slot slotDeGesto(Gestos::Gesto gesto)
+    {
+        switch (gesto)
+        {
+        case Gestos::Gesto::IZQUIERDA:
+            return Perfiles::Slot::IZQUIERDA;
+        case Gestos::Gesto::DERECHA:
+            return Perfiles::Slot::DERECHA;
+        case Gestos::Gesto::ARRIBA:
+            return Perfiles::Slot::ARRIBA;
+        case Gestos::Gesto::ABAJO:
+            return Perfiles::Slot::ABAJO;
+        case Gestos::Gesto::ACERCAR:
+            return Perfiles::Slot::ACERCAR;
+        case Gestos::Gesto::ALEJAR:
+            return Perfiles::Slot::ALEJAR;
+        case Gestos::Gesto::HORARIO:
+            return Perfiles::Slot::HORARIO;
+        case Gestos::Gesto::ANTIHORARIO:
+            return Perfiles::Slot::ANTIHORARIO;
+        default:
+            return Perfiles::Slot::DERECHA;
         }
+    }
+
+    // Envía la combinación de teclas de la acción
+    inline void enviarAccion(const Perfiles::Accion &accion)
+    {
+        if (!estaConectado())
+            return;
+
+        // Presionar modificadores
+        if (accion.mod1)
+            _teclado.press(accion.mod1);
+        if (accion.mod2)
+            _teclado.press(accion.mod2);
+        if (accion.mod3)
+            _teclado.press(accion.mod3);
+
+        // Presionar tecla principal
+        _teclado.press(accion.tecla);
+        delay(50);
+
+        // Soltar todo
+        _teclado.releaseAll();
+    }
+
+    // Punto de entrada principal — recibe gesto y ejecuta acción del perfil
+    inline const Perfiles::Accion &enviarGesto(Gestos::Gesto gesto)
+    {
+        const Perfiles::Accion &accion = Perfiles::obtenerAccion(slotDeGesto(gesto));
+        enviarAccion(accion);
+        return accion;
     }
 
 } // namespace BluetoothHID
