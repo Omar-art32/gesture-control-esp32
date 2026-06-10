@@ -65,8 +65,8 @@ namespace Perfiles
         {
             {"Vol -", KEY_F1, 0, 0, 0},                                     // izq
             {"Vol +", KEY_F2, 0, 0, 0},                                     // der
-            {"Brillo +", KEY_F2, 0, 0, 0},                                  // arr
-            {"Brillo -", KEY_F1, 0, 0, 0},                                  // aba
+            {"Brillo +", KEY_F6, 0, 0, 0},                                  // arr
+            {"Brillo -", KEY_F5, 0, 0, 0},                                  // aba
             {"Captura", KEY_LEFT_SHIFT, KEY_LEFT_GUI, 's', 0},              // acer
             {"Bloquear", 'l', KEY_LEFT_GUI, 0, 0},                          // alej
             {"Escrit ->", KEY_RIGHT_ARROW, KEY_LEFT_CTRL, KEY_LEFT_GUI, 0}, // hor

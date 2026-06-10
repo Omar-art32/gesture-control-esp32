@@ -19,6 +19,9 @@ namespace ServidorWeb
     static AsyncWebServer _servidor(PUERTO_WEB);
     static AsyncWebSocket _ws("/ws");
 
+    // Forward declaration — definida más abajo
+    inline void notificarGesto(const char *nombreGesto, bool btConectado);
+
     static void _onWebSocketEvento(
         AsyncWebSocket *servidor,
         AsyncWebSocketClient *cliente,
@@ -60,6 +63,10 @@ namespace ServidorWeb
                     Perfiles::establecerModo(modo);
                     Serial.printf("[Web] Modo cambiado a %s\n",
                                   Perfiles::nombreModoActual());
+
+                    // Notificar el nuevo modo a TODOS los clientes conectados
+                    // (no solo al que envió el comando)
+                    notificarGesto("Modo cambiado", false);
                 }
             }
         }
