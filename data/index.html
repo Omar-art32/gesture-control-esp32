@@ -53,19 +53,37 @@
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">modo activo — Wave cambia de modo</p>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <template x-for="(modo, i) in modos" :key="i">
-          <button @click="cambiarModo(i)" class="border-2 p-3 text-left transition-all duration-200" :class="modoActivo === i
-            ? (i===0 ? 'border-blue-400 bg-blue-50' :
-               i===1 ? 'border-cyan-400 bg-cyan-50' :
-               i===2 ? 'border-pink-400 bg-pink-50' :
-                       'border-yellow-400 bg-yellow-50')
-            : 'border-border bg-panel hover:border-accent/40'">
-            <!-- punto de color -->
-            <div class="w-3 h-3 rounded-full mb-2" :class="i===0 ? 'bg-blue-500' :
-                       i===1 ? 'bg-cyan-500' :
-                       i===2 ? 'bg-pink-500' : 'bg-yellow-500'"></div>
+          <button @click="cambiarModo(i)" class="border-2 p-3 text-left transition-all duration-200"
+            :class="modoActivo === i
+              ? (i===0 ? 'border-blue-400 bg-blue-50' :
+                 i===1 ? 'border-cyan-400 bg-cyan-50' :
+                 i===2 ? 'border-pink-400 bg-pink-50' :
+                         'border-yellow-400 bg-yellow-50')
+              : 'border-border bg-panel hover:border-accent/40'">
+            <div class="w-3 h-3 rounded-full mb-2"
+              :class="i===0 ? 'bg-blue-500' : i===1 ? 'bg-cyan-500' : i===2 ? 'bg-pink-500' : 'bg-yellow-500'">
+            </div>
             <p class="font-mono text-xs font-bold text-ink" x-text="modo.nombre"></p>
             <p class="font-mono text-xs text-muted mt-0.5" x-text="'Modo ' + (i+1)"></p>
             <p x-show="modoActivo === i" class="font-mono text-xs text-accent mt-1">● activo</p>
+          </button>
+        </template>
+      </div>
+    </section>
+
+    <!-- Selector de plataforma (solo visible en modo PRESENTACION) -->
+    <section x-show="modoActivo === 0" x-transition>
+      <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3">
+        plataforma — Wave doble cambia de plataforma
+      </p>
+      <div class="grid grid-cols-3 gap-2">
+        <template x-for="(plat, i) in plataformas" :key="i">
+          <button @click="cambiarPlataforma(i)" class="border-2 p-3 text-left transition-all duration-200"
+            :class="plataformaActiva === i
+              ? 'border-blue-400 bg-blue-50'
+              : 'border-border bg-panel hover:border-accent/40'">
+            <p class="font-mono text-xs font-bold text-ink" x-text="plat"></p>
+            <p x-show="plataformaActiva === i" class="font-mono text-xs text-accent mt-1">● activa</p>
           </button>
         </template>
       </div>
@@ -84,7 +102,7 @@
         <div>
           <p class="text-3xl font-black tracking-tight"
             :class="gestoActivo !== 'Esperando...' ? 'text-ink' : 'text-muted'" x-text="gestoActivo"></p>
-          <p class="font-mono text-xs text-muted mt-1" x-text="'Modo: ' + (modos[modoActivo]?.nombre ?? '')"></p>
+          <p class="font-mono text-xs text-muted mt-1" x-text="'Modo: ' + _etiquetaModoActual()"></p>
         </div>
         <div class="ml-auto font-mono text-xs text-muted text-right">
           <p x-text="ultimaActualizacion"></p>
@@ -93,10 +111,10 @@
       </div>
     </section>
 
-    <!-- Tabla de gestos del modo activo -->
+    <!-- Tabla de gestos del modo/plataforma activos -->
     <section>
       <p class="font-mono text-xs text-muted uppercase tracking-widest mb-3"
-        x-text="'gestos — ' + (modos[modoActivo]?.nombre ?? '')"></p>
+        x-text="'gestos — ' + _etiquetaModoActual()"></p>
       <div class="border border-border bg-panel divide-y divide-border">
         <template x-for="(g, i) in gestosDelModoActivo()" :key="i">
           <div class="flex items-center gap-4 px-4 py-2 hover:bg-surface transition-colors">
@@ -109,9 +127,11 @@
         <!-- Wave siempre al final -->
         <div class="flex items-center gap-4 px-4 py-2 bg-accent/5">
           <span class="font-mono text-sm w-28 flex-shrink-0 text-accent">〜 Wave</span>
-          <span class="text-xs text-muted flex-1">Cambiar modo</span>
+          <span class="text-xs text-muted flex-1"
+            x-text="modoActivo === 0 ? 'Simple: cambiar modo · Doble: cambiar plataforma' : 'Cambiar modo'"></span>
           <span
-            class="font-mono text-xs border border-accent/30 text-accent px-2 py-0.5 bg-surface flex-shrink-0">MODO+1</span>
+            class="font-mono text-xs border border-accent/30 text-accent px-2 py-0.5 bg-surface flex-shrink-0"
+            x-text="modoActivo === 0 ? 'WAVE×1 / ×2' : 'MODO+1'"></span>
         </div>
       </div>
     </section>

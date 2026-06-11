@@ -7,7 +7,9 @@
 
 // ═══════════════════════════════════════════════════════════════
 //  Módulo Bluetooth HID
-//  Ejecuta la acción del perfil activo para cada gesto
+//  Soporta dos tipos de acción:
+//    TipoAccion::TECLADO — press(mod…) + press(tecla) + releaseAll()
+//    TipoAccion::MEDIA   — write(MediaKeyReport)
 // ═══════════════════════════════════════════════════════════════
 
 namespace BluetoothHID
@@ -26,55 +28,51 @@ namespace BluetoothHID
         return _teclado.isConnected();
     }
 
-    // Convierte gesto a slot de perfil
     inline Perfiles::Slot slotDeGesto(Gestos::Gesto gesto)
     {
         switch (gesto)
         {
-        case Gestos::Gesto::IZQUIERDA:
-            return Perfiles::Slot::IZQUIERDA;
-        case Gestos::Gesto::DERECHA:
-            return Perfiles::Slot::DERECHA;
-        case Gestos::Gesto::ARRIBA:
-            return Perfiles::Slot::ARRIBA;
-        case Gestos::Gesto::ABAJO:
-            return Perfiles::Slot::ABAJO;
-        case Gestos::Gesto::ACERCAR:
-            return Perfiles::Slot::ACERCAR;
-        case Gestos::Gesto::ALEJAR:
-            return Perfiles::Slot::ALEJAR;
-        case Gestos::Gesto::HORARIO:
-            return Perfiles::Slot::HORARIO;
-        case Gestos::Gesto::ANTIHORARIO:
-            return Perfiles::Slot::ANTIHORARIO;
-        default:
-            return Perfiles::Slot::DERECHA;
+        case Gestos::Gesto::IZQUIERDA:   return Perfiles::Slot::IZQUIERDA;
+        case Gestos::Gesto::DERECHA:     return Perfiles::Slot::DERECHA;
+        case Gestos::Gesto::ARRIBA:      return Perfiles::Slot::ARRIBA;
+        case Gestos::Gesto::ABAJO:       return Perfiles::Slot::ABAJO;
+        case Gestos::Gesto::ACERCAR:     return Perfiles::Slot::ACERCAR;
+        case Gestos::Gesto::ALEJAR:      return Perfiles::Slot::ALEJAR;
+        case Gestos::Gesto::HORARIO:     return Perfiles::Slot::HORARIO;
+        case Gestos::Gesto::ANTIHORARIO: return Perfiles::Slot::ANTIHORARIO;
+        default:                         return Perfiles::Slot::DERECHA;
         }
     }
 
-    // Envía la combinación de teclas de la acción
     inline void enviarAccion(const Perfiles::Accion &accion)
     {
-        if (!estaConectado())
-            return;
+        if (!estaConectado()) return;
 
-        // Presionar modificadores
-        if (accion.mod1)
-            _teclado.press(accion.mod1);
-        if (accion.mod2)
-            _teclado.press(accion.mod2);
-        if (accion.mod3)
-            _teclado.press(accion.mod3);
+        switch (accion.tipo)
+        {
+        case Perfiles::TipoAccion::TECLADO:
+            if (accion.mod1) _teclado.press(accion.mod1);
+            if (accion.mod2) _teclado.press(accion.mod2);
+            if (accion.mod3) _teclado.press(accion.mod3);
+            _teclado.press(accion.tecla);
+            delay(50);
+            _teclado.releaseAll();
+            break;
 
-        // Presionar tecla principal
-        _teclado.press(accion.tecla);
-        delay(50);
+        case Perfiles::TipoAccion::MEDIA:
+        {
+            // write(MediaKeyReport) envía y libera solo
+            MediaKeyReport mk = {accion.media[0], accion.media[1]};
+            _teclado.write(mk);
+            break;
+        }
 
-        // Soltar todo
-        _teclado.releaseAll();
+        case Perfiles::TipoAccion::NINGUNA:
+        default:
+            break;
+        }
     }
 
-    // Punto de entrada principal — recibe gesto y ejecuta acción del perfil
     inline const Perfiles::Accion &enviarGesto(Gestos::Gesto gesto)
     {
         const Perfiles::Accion &accion = Perfiles::obtenerAccion(slotDeGesto(gesto));

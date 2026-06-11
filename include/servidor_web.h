@@ -9,8 +9,11 @@
 
 // ═══════════════════════════════════════════════════════════════
 //  Módulo Servidor Web
-//  WebSocket notifica gesto + modo activo
-//  Recibe comandos de cambio de modo desde la web
+//  WebSocket notifica: gesto, bt, modo, modoNombre,
+//                      plataforma, plataformaNombre
+//  Comandos recibidos:
+//    { "cmd": "setModo",       "modo": N }
+//    { "cmd": "setPlataforma", "plataforma": N }
 // ═══════════════════════════════════════════════════════════════
 
 namespace ServidorWeb
@@ -19,7 +22,6 @@ namespace ServidorWeb
     static AsyncWebServer _servidor(PUERTO_WEB);
     static AsyncWebSocket _ws("/ws");
 
-    // Forward declaration — definida más abajo
     inline void notificarGesto(const char *nombreGesto, bool btConectado);
 
     static void _onWebSocketEvento(
@@ -33,13 +35,13 @@ namespace ServidorWeb
         if (tipo == WS_EVT_CONNECT)
         {
             Serial.printf("[WS] Cliente #%u conectado\n", cliente->id());
-
-            // Enviar estado actual al cliente recién conectado
             JsonDocument doc;
-            doc["gesto"] = "Esperando...";
-            doc["bt"] = false;
-            doc["modo"] = Perfiles::modoActual();
-            doc["modoNombre"] = Perfiles::nombreModoActual();
+            doc["gesto"]            = "Esperando...";
+            doc["bt"]               = false;
+            doc["modo"]             = Perfiles::modoActual();
+            doc["modoNombre"]       = Perfiles::NOMBRE_MODO[Perfiles::modoActual()];
+            doc["plataforma"]       = Perfiles::plataformaActual();
+            doc["plataformaNombre"] = Perfiles::NOMBRE_PLATAFORMA[Perfiles::plataformaActual()];
             String json;
             serializeJson(doc, json);
             cliente->text(json);
@@ -50,24 +52,26 @@ namespace ServidorWeb
         }
         else if (tipo == WS_EVT_DATA && longitud > 0)
         {
-            // Recibir comando desde la web
-            // Formato esperado: {"cmd":"setModo","modo":2}
             String msg = String((char *)datos).substring(0, longitud);
             JsonDocument doc;
-            if (deserializeJson(doc, msg) == DeserializationError::Ok)
-            {
-                const char *cmd = doc["cmd"] | "";
-                if (strcmp(cmd, "setModo") == 0)
-                {
-                    uint8_t modo = doc["modo"] | 0;
-                    Perfiles::establecerModo(modo);
-                    Serial.printf("[Web] Modo cambiado a %s\n",
-                                  Perfiles::nombreModoActual());
+            if (deserializeJson(doc, msg) != DeserializationError::Ok) return;
 
-                    // Notificar el nuevo modo a TODOS los clientes conectados
-                    // (no solo al que envió el comando)
-                    notificarGesto("Modo cambiado", false);
-                }
+            const char *cmd = doc["cmd"] | "";
+
+            if (strcmp(cmd, "setModo") == 0)
+            {
+                uint8_t modo = doc["modo"] | 0;
+                Perfiles::establecerModo(modo);
+                Serial.printf("[Web] Modo → %s\n", Perfiles::nombreModoActual());
+                notificarGesto("Modo cambiado", false);
+            }
+            else if (strcmp(cmd, "setPlataforma") == 0)
+            {
+                uint8_t plat = doc["plataforma"] | 0;
+                Perfiles::establecerPlataforma(plat);
+                Serial.printf("[Web] Plataforma → %s\n",
+                              Perfiles::NOMBRE_PLATAFORMA[Perfiles::plataformaActual()]);
+                notificarGesto("Plataforma cambiada", false);
             }
         }
     }
@@ -108,18 +112,18 @@ namespace ServidorWeb
         return true;
     }
 
-    // Notifica gesto + modo a todos los clientes WebSocket
     inline void notificarGesto(const char *nombreGesto, bool btConectado)
     {
         _ws.cleanupClients();
-        if (_ws.count() == 0)
-            return;
+        if (_ws.count() == 0) return;
 
         JsonDocument doc;
-        doc["gesto"] = nombreGesto;
-        doc["bt"] = btConectado;
-        doc["modo"] = Perfiles::modoActual();
-        doc["modoNombre"] = Perfiles::nombreModoActual();
+        doc["gesto"]            = nombreGesto;
+        doc["bt"]               = btConectado;
+        doc["modo"]             = Perfiles::modoActual();
+        doc["modoNombre"]       = Perfiles::NOMBRE_MODO[Perfiles::modoActual()];
+        doc["plataforma"]       = Perfiles::plataformaActual();
+        doc["plataformaNombre"] = Perfiles::NOMBRE_PLATAFORMA[Perfiles::plataformaActual()];
 
         String json;
         serializeJson(doc, json);
